@@ -1,5 +1,4 @@
 
-use crate::Actor;
 use super::{ActorGuardShared, ActorGuardMut};
 
 use std::ops::{Deref, DerefMut};

@@ -87,47 +87,46 @@ impl<Act: Actor> Future for ActorState<Act> {
 
         // launch a task to process the message
         // this code manually implements synchronization, so should be entirely considered unsafe
-        unsafe {
-            // update synchronization state, and create an actor guard
-            let shared_state = self.shared.clone();
-            let previous_access_count = shared_state.access_count.fetch_add(1, Ordering::Relaxed);
-            let dispatch_task = task::current();
 
-            // the remainder is specialized for access type
-            match msg {
-                ActorMessage::Shared(msg) => {
-                    trace!("beginning shared actor access");
+        // update synchronization state, and create an actor guard
+        let shared_state = self.shared.clone();
+        let previous_access_count = shared_state.access_count.fetch_add(1, Ordering::Relaxed);
+        let dispatch_task = task::current();
 
-                    self.access_status = ActorAccessStatus::Shared;
-                    // create a shared alias into the user_state unsafe cell
-                    let ptr: *const Act = shared_state.user_state.get();
-                    let actor_guard = ActorGuardShared {
-                        shared_state,
-                        dispatch_task,
-                        ptr,
-                    };
+        // the remainder is specialized for access type
+        match msg {
+            ActorMessage::Shared(msg) => {
+                trace!("beginning shared actor access");
 
-                    // delegate to the message union
-                    // unlocking the actor is performed in the actor guard destructor
-                    MessageUnionShared::process(msg, actor_guard);
-                },
-                ActorMessage::Mut(msg) => {
-                    trace!("beginning exclusive actor access");
+                self.access_status = ActorAccessStatus::Shared;
+                // create a shared alias into the user_state unsafe cell
+                let ptr: *const Act = shared_state.user_state.get();
+                let actor_guard = ActorGuardShared {
+                    shared_state,
+                    dispatch_task,
+                    ptr,
+                };
 
-                    self.access_status = ActorAccessStatus::Exclusive;
-                    debug_assert_eq!(previous_access_count, 0);
-                    // create a unique alias into the user_state unsafe cell
-                    let ptr: *mut Act = shared_state.user_state.get();
-                    let actor_guard = ActorGuardMut {
-                        shared_state,
-                        dispatch_task,
-                        ptr,
-                    };
+                // delegate to the message union
+                // unlocking the actor is performed in the actor guard destructor
+                MessageUnionShared::process(msg, actor_guard);
+            },
+            ActorMessage::Mut(msg) => {
+                trace!("beginning exclusive actor access");
 
-                    // delegate to the message union
-                    // unlocking the actor is performed in the actor guard destructor
-                    MessageUnionMut::process(msg, actor_guard);
-                }
+                self.access_status = ActorAccessStatus::Exclusive;
+                debug_assert_eq!(previous_access_count, 0);
+                // create a unique alias into the user_state unsafe cell
+                let ptr: *mut Act = shared_state.user_state.get();
+                let actor_guard = ActorGuardMut {
+                    shared_state,
+                    dispatch_task,
+                    ptr,
+                };
+
+                // delegate to the message union
+                // unlocking the actor is performed in the actor guard destructor
+                MessageUnionMut::process(msg, actor_guard);
             }
         }
 
