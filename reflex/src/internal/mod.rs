@@ -6,18 +6,25 @@ use std::cell::UnsafeCell;
 
 use atomic::{Atomic, Ordering};
 use crossbeam_utils::CachePadded;
+use futures::sync::mpsc;
 use futures::task::Task;
 
-/// Implementation of dereferencing actor guards.
+/// Dereference actor guards.
 mod actor_guard_deref;
 
+/// Actor dispatch task.
+mod dispatch;
+
 /// Reflex's state for an actor which is owned by the actor's dispatch routine.
-pub struct ActorState<Act> {
+pub struct ActorState<Act: Actor> {
     // handle to the shared state
     shared: Arc<ActorStateShared<Act>>,
 
-    // exclusively owned state
-    access_status: ActorAccessStatus
+    access_status: ActorAccessStatus,
+
+    // the message queue, and the slot for pushing a message back in
+    msg_recv: mpsc::Receiver<Act::Message>,
+    curr_msg: Option<Act::Message>,
 }
 
 /// Reflex's state for an actor which is reference counted.

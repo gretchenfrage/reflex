@@ -12,7 +12,6 @@ use crate::{ActorGuardShared, ActorGuardMut};
 /// #### Type Parameters
 /// * `Act` - the actor type which processes this message.
 pub trait MessageUnion<Act>: Sized + Send + Sync + Copy + 'static{
-
     /// Associated shared message union type.
     type Shared: MessageUnionShared<Act>;
 
