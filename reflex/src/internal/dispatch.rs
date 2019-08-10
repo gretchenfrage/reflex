@@ -151,3 +151,41 @@ impl<Act: Actor> ActorState<Act> {
         Ok(Async::Ready(()))
     }
 }
+
+// actor guard drop implementations
+
+impl<Act> Drop for ActorGuardShared<Act> {
+    fn drop(&mut self) {
+        // decrement the access_count, and if we've lowered it to 0, notify the task
+        let access_count = self.shared_state.access_count.fetch_sub(1, Ordering::Relaxed) - 1;
+        if access_count == 0 {
+            trace!("access count lowered to 0, notifying dispatch task");
+            // we can use to will_notify_current optimization, since ActorState::poll recurses
+            // this can avoid thread-pool mechanism when the actor is processing messages synchronously
+            if !self.dispatch_task.will_notify_current() {
+                self.dispatch_task.notify();
+            } else {
+                trace!("actor guard hitting will_notify_current() optimization");
+            }
+        }
+    }
+}
+
+impl<Act> Drop for ActorGuardMut<Act> {
+    fn drop(&mut self) {
+        // decrement the access_count
+        // since we have exclusive access, this should decrement it to 0
+        // atomic-release our user_state writes to the dispatch task
+        let access_count = self.shared_state.access_count.fetch_sub(1, Ordering::Release) - 1;
+        debug_assert_eq!(access_count, 0);
+
+        trace!("exclusive actor guard released, notifying dispatch task");
+        // we can use to will_notify_current optimization, since ActorState::poll recurses
+        // this can avoid thread-pool mechanism when the actor is processing messages synchronously
+        if !self.dispatch_task.will_notify_current() {
+            self.dispatch_task.notify();
+        } else {
+            trace!("actor guard hitting will_notify_current() optimization");
+        }
+    }
+}
