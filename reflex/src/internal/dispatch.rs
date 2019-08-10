@@ -89,14 +89,13 @@ impl<Act: Actor> Future for ActorState<Act> {
         // this code manually implements synchronization, so should be entirely considered unsafe
 
         // update synchronization state, and create an actor guard
-        let shared_state = self.shared.clone();
-        let previous_access_count = shared_state.access_count.fetch_add(1, Ordering::Relaxed);
-        let dispatch_task = task::current();
-
-        // the remainder is specialized for access type
         match msg {
-            ActorMessage::Shared(msg) => {
+            ActorMessage::Shared(msg_vec) => for msg in msg_vec {
                 trace!("beginning shared actor access");
+
+                let shared_state = self.shared.clone();
+                shared_state.access_count.fetch_add(1, Ordering::Relaxed);
+                let dispatch_task = task::current();
 
                 self.access_status = ActorAccessStatus::Shared;
                 // create a shared alias into the user_state unsafe cell
@@ -114,8 +113,12 @@ impl<Act: Actor> Future for ActorState<Act> {
             ActorMessage::Mut(msg) => {
                 trace!("beginning exclusive actor access");
 
-                self.access_status = ActorAccessStatus::Exclusive;
+                let shared_state = self.shared.clone();
+                let previous_access_count = shared_state.access_count.fetch_add(1, Ordering::Relaxed);
                 debug_assert_eq!(previous_access_count, 0);
+                let dispatch_task = task::current();
+
+                self.access_status = ActorAccessStatus::Exclusive;
                 // create a unique alias into the user_state unsafe cell
                 let ptr: *mut Act = shared_state.user_state.get();
                 let actor_guard = ActorGuardMut {

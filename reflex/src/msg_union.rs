@@ -2,6 +2,8 @@
 use crate::Actor;
 use crate::{ActorGuardShared, ActorGuardMut};
 
+use smallvec::SmallVec;
+
 /// Trait binding together a set of message types which an actor can process,
 /// both shared and mut.
 ///
@@ -46,7 +48,13 @@ pub trait MessageUnionMut<Act>: Sized + Message {
 /// By representing as an enum over the actor's shared and exclusive message union types,
 /// code can pattern-match over the message's access type.
 pub enum ActorMessage<Act: Actor> {
-    Shared(<Act::Message as MessageUnion<Act>>::Shared),
+    // the shared actor message variant may store several messages in a `SmallVec`.
+    //
+    // since a shared message processing can, by-definition, occur concurrently, this has
+    // little effect on code complexity. however, this allows message producers to release
+    // their messages in an atomic batch, which prevents concurrency-unfriendly interleaving
+    // of those messages with exclusively processed messages from another producer.
+    Shared(SmallVec<[<Act::Message as MessageUnion<Act>>::Shared; 4]>),
     Mut(<Act::Message as MessageUnion<Act>>::Mut),
 }
 
