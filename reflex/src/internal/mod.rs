@@ -8,7 +8,7 @@ use atomic::{Atomic, Ordering};
 use crossbeam_utils::CachePadded;
 use futures::task::Task;
 
-/// Implementation of dereferencing for actor guards.
+/// Implementation of dereferencing actor guards.
 mod actor_guard_deref;
 
 /// Reflex's state for an actor which is owned by the actor's dispatch routine.
@@ -65,3 +65,6 @@ pub struct ActorGuardMut<Act: Actor> {
     // cache a pointer, for better aliasing
     ptr: *mut Act,
 }
+
+// TODO: clone shared actor guard
+// TODO: drop actor guard
