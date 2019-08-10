@@ -1,5 +1,6 @@
 
 use crate::Actor;
+use crate::msg_union::ActorMessage;
 
 use std::sync::Arc;
 use std::cell::UnsafeCell;
@@ -23,8 +24,8 @@ pub struct ActorState<Act: Actor> {
     access_status: ActorAccessStatus,
 
     // the message queue, and the slot for pushing a message back in
-    msg_recv: mpsc::Receiver<Act::Message>,
-    curr_msg: Option<Act::Message>,
+    msg_recv: mpsc::Receiver<ActorMessage<Act>>,
+    curr_msg: Option<ActorMessage<Act>>,
 }
 
 /// Reflex's state for an actor which is reference counted.

@@ -11,7 +11,7 @@ use futures::try_ready;
 /// 2. a message sender handle
 pub fn create_actor<Act: Actor>(user_state: Act) -> (
     ActorState<Act>,
-    mpsc::Sender<Act::Message>,
+    mpsc::Sender<ActorMessage<Act>>,
 ) {
     // create the message channel
     let (msg_send, msg_recv) = mpsc::channel(1000);
@@ -54,10 +54,7 @@ impl<Act: Actor> Future for ActorState<Act> {
             None => return Ok(Async::Ready(())),
         };
 
-        // TODO: we probably want, not to actually send the MessageUnion type
-        // ... through the queue, but some message union enum type through,
-        // ... which is generic over the message union, and lets us pattern
-        // ... match on exclusivity.
+        unimplemented!()
     }
 }
 
