@@ -9,7 +9,7 @@ use futures::task;
 /// Set up the internal concurrency mechanism for an actor.
 ///
 /// Returns:
-/// 1. the actor state, which, itself, is a the dispatch task future
+/// 1. the actor state, which, itself, is the dispatch task future
 /// 2. a message sender handle
 pub fn create_actor<Act: Actor>(user_state: Act) -> (
     ActorState<Act>,
