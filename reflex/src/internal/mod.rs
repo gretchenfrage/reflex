@@ -8,6 +8,9 @@ use atomic::{Atomic, Ordering};
 use crossbeam_utils::CachePadded;
 use futures::task::Task;
 
+/// Implementation of dereferencing for actor guards.
+mod actor_guard_deref;
+
 /// Reflex's state for an actor which is owned by the actor's dispatch routine.
 pub struct ActorState<Act: Actor> {
     // handle to the shared state
