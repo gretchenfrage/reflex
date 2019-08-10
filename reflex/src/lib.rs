@@ -20,6 +20,8 @@ pub use crate::internal::{ActorGuardShared, ActorGuardMut};
 /// Actor types.
 pub trait Actor: Sized + Send + Sync + 'static {
     /// Union type for messages which this actor can process.
+    ///
+    /// This type is meant to be created with a macro.
     type Message: MessageUnion<Self>;
 }
 

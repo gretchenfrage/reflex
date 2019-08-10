@@ -74,3 +74,8 @@ pub struct ActorGuardMut<Act> {
     // cache a pointer, for better aliasing
     ptr: *mut Act,
 }
+
+unsafe impl<Act: Send> Send for ActorGuardShared<Act> {}
+unsafe impl<Act: Sync> Sync for ActorGuardShared<Act> {}
+unsafe impl<Act: Send> Send for ActorGuardMut<Act> {}
+unsafe impl<Act: Sync> Sync for ActorGuardMut<Act> {}

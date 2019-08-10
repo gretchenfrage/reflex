@@ -15,7 +15,7 @@ use smallvec::SmallVec;
 ///
 /// #### Type Parameters
 /// * `Act` - the actor type which processes this message.
-pub trait MessageUnion<Act>: Sized + Send + Sync + Copy + 'static{
+pub trait MessageUnion<Act>: Sized + Send + Sync + Copy + 'static {
     /// Associated shared message union type.
     type Shared: MessageUnionShared<Act>;
 
@@ -50,7 +50,7 @@ pub trait MessageUnionMut<Act>: Sized + Message {
 pub enum ActorMessage<Act: Actor> {
     // the shared actor message variant may store several messages in a `SmallVec`.
     //
-    // since a shared message processing can, by-definition, occur concurrently, this has
+    // since processing a shared message can, by-definition, occur concurrently, this has
     // little effect on code complexity. however, this allows message producers to release
     // their messages in an atomic batch, which prevents concurrency-unfriendly interleaving
     // of those messages with exclusively processed messages from another producer.
