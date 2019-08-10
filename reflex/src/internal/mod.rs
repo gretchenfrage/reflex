@@ -40,6 +40,7 @@ pub struct ActorStateShared<Act> {
 
 /// The way in which an actor is currently being accessed, equivalent to the state of a
 /// read/write lock.
+#[derive(Copy, Clone, Eq, PartialEq, Debug)]
 pub enum ActorAccessStatus {
     /// The actor is not being accessed.
     Available,
