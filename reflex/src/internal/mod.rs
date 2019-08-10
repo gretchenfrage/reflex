@@ -6,6 +6,7 @@ use std::cell::UnsafeCell;
 
 use atomic::{Atomic, Ordering};
 use crossbeam_utils::CachePadded;
+use futures::task::Task;
 
 /// Reflex's state for an actor which is owned by the actor's dispatch routine.
 pub struct ActorState<Act: Actor> {
@@ -38,3 +39,26 @@ pub enum ActorAccessStatus {
     Exclusive,
 }
 
+/// Synchronization guard for shared (immutable) access to an actor.
+///
+/// This type is notably `'static`, and clone-shareable.
+pub struct ActorGuardShared<Act: Actor> {
+    // handle to the shared state
+    shared_state: Arc<ActorStateShared<Act>>,
+    // handle to the actor's dispatch task, to wake it up when it unblocks the task
+    dispatch_task: Task,
+    // cache a pointer, for better aliasing
+    ptr: *const Act,
+}
+
+/// Synchronization guard for exclusive (mutable) access to an actor.
+///
+/// This type is notably `'static`.
+pub struct ActorGuardMut<Act: Actor> {
+    // handle to the shared state
+    shared_state: Arc<ActorStateShared<Act>>,
+    // handle to the actor's dispatch task, to wake it up when it unblocks the task
+    dispatch_task: Task,
+    // cache a pointer, for better aliasing
+    ptr: *mut Act,
+}
