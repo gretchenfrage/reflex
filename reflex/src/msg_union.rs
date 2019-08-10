@@ -1,4 +1,6 @@
 
+use crate::{ActorGuardShared, ActorGuardMut};
+
 /// Trait binding together a set of message types which an actor can process,
 /// both shared and mut.
 ///
@@ -18,20 +20,24 @@ pub trait MessageUnion<Act>: Sized + Send + Sync + Copy + 'static{
     type Mut: MessageUnionMut<Act>;
 }
 
-/// Trait binding together a set of message for which an actor implements `ReactShared`.
+/// Trait binding together a set of message types for which an actor implements `ReactShared`.
 ///
 /// #### Type Parameters
 /// * `Act` - the actor type which processes this message.
-pub trait MessageUnionShared<Act>: Message {
-    // TODO: fn process with actor guard
+pub trait MessageUnionShared<Act>: Sized + Message {
+    /// Delegate to `<Act as ReactShared<Msg>>::process`, where `Msg` is our internal runtime
+    /// variant, passing our inner value as the message parameter.
+    fn process(self, actor: ActorGuardShared<Act>);
 }
 
-/// Trait binding together a set of message for which an actor implements `ReactMut`.
+/// Trait binding together a set of message types for which an actor implements `ReactMut`.
 ///
 /// #### Type Parameters
 /// * `Act` - the actor type which processes this message.
-pub trait MessageUnionMut<Act>: Message {
-    // TODO: fn process with actor guard
+pub trait MessageUnionMut<Act>: Sized + Message {
+    /// Delegate to `<Act as ReactMut<Msg>>::process`, where `Msg` is our internal runtime
+    /// variant, passing our inner value as the message parameter.
+    fn process(self, actor: ActorGuardMut<Act>);
 }
 
 /// Types which can be valid messages.

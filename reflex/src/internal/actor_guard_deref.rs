@@ -4,7 +4,7 @@ use super::{ActorGuardShared, ActorGuardMut};
 
 use std::ops::{Deref, DerefMut};
 
-impl<Act: Actor> Deref for ActorGuardShared<Act> {
+impl<Act> Deref for ActorGuardShared<Act> {
     type Target = Act;
 
     fn deref(&self) -> &Act {
@@ -14,7 +14,7 @@ impl<Act: Actor> Deref for ActorGuardShared<Act> {
     }
 }
 
-impl<Act: Actor> Deref for ActorGuardMut<Act> {
+impl<Act> Deref for ActorGuardMut<Act> {
     type Target = Act;
 
     fn deref(&self) -> &Act {
@@ -24,7 +24,7 @@ impl<Act: Actor> Deref for ActorGuardMut<Act> {
     }
 }
 
-impl<Act: Actor> DerefMut for ActorGuardMut<Act> {
+impl<Act> DerefMut for ActorGuardMut<Act> {
     fn deref_mut(&mut self) -> &mut Act {
         unsafe {
             &mut *self.ptr

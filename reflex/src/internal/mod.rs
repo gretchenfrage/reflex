@@ -12,7 +12,7 @@ use futures::task::Task;
 mod actor_guard_deref;
 
 /// Reflex's state for an actor which is owned by the actor's dispatch routine.
-pub struct ActorState<Act: Actor> {
+pub struct ActorState<Act> {
     // handle to the shared state
     shared: Arc<ActorStateShared<Act>>,
 
@@ -21,7 +21,7 @@ pub struct ActorState<Act: Actor> {
 }
 
 /// Reflex's state for an actor which is reference counted.
-pub struct ActorStateShared<Act: Actor> {
+pub struct ActorStateShared<Act> {
     // we will cache-pad these two pieces of state
 
     // the user's actor struct, which we manually synchronize
@@ -45,7 +45,7 @@ pub enum ActorAccessStatus {
 /// Synchronization guard for shared (immutable) access to an actor.
 ///
 /// This type is notably `'static`, and clone-shareable.
-pub struct ActorGuardShared<Act: Actor> {
+pub struct ActorGuardShared<Act> {
     // handle to the shared state
     shared_state: Arc<ActorStateShared<Act>>,
     // handle to the actor's dispatch task, to wake it up when it unblocks the task
@@ -57,7 +57,7 @@ pub struct ActorGuardShared<Act: Actor> {
 /// Synchronization guard for exclusive (mutable) access to an actor.
 ///
 /// This type is notably `'static`.
-pub struct ActorGuardMut<Act: Actor> {
+pub struct ActorGuardMut<Act> {
     // handle to the shared state
     shared_state: Arc<ActorStateShared<Act>>,
     // handle to the actor's dispatch task, to wake it up when it unblocks the task
