@@ -1,4 +1,14 @@
 
+#[macro_use]
+extern crate log;
+extern crate futures;
+extern crate atomic;
+extern crate smallvec;
+extern crate crossbeam_utils;
+
+/// Internal concurrency mechanism.
+mod internal;
+
 /// Union types for messages which actors can process.
 pub mod msg_union;
 
