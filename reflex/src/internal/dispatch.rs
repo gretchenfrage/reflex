@@ -188,3 +188,17 @@ impl<Act> Drop for ActorGuardMut<Act> {
         }
     }
 }
+
+// implementation for cloning the shared actor guard
+impl<Act> Clone for ActorGuardShared<Act> {
+    fn clone(&self) -> Self {
+        // increment the access count, then the rest is straight-forward cloning
+        self.shared_state.access_count.fetch_add(1, Ordering::Relaxed);
+
+        ActorGuardShared {
+            shared_state: self.shared_state.clone(),
+            dispatch_task: self.dispatch_task.clone(),
+            ptr: self.ptr,
+        }
+    }
+}

@@ -74,6 +74,3 @@ pub struct ActorGuardMut<Act> {
     // cache a pointer, for better aliasing
     ptr: *mut Act,
 }
-
-// TODO: clone shared actor guard
-// TODO: drop actor guard
