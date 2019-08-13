@@ -3,6 +3,8 @@ name = "reflex"
 version = "0.1.0"
 authors = ["Phoenix Kahlo <kahlo.phoenix@gmail.com>"]
 edition = "2018"
+description = "actors, simple and fast."
+readme = "README.md"
 
 [dependencies]
 log = "0.4.8"
