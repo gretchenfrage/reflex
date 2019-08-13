@@ -1,20 +1,27 @@
 
+//! Actors, simple and fast.
+
 #[macro_use]
 extern crate log;
 extern crate futures;
 extern crate atomic;
 extern crate smallvec;
 extern crate crossbeam_utils;
+extern crate failure;
 
 use crate::msg_union::MessageUnion;
 
 /// Internal concurrency mechanism.
-mod internal;
+pub (crate) mod internal;
 
 /// Union types for messages which actors can process.
 pub mod msg_union;
 
+/// Handles for sending messages to actors.
+pub mod mailbox;
+
 // re-export actor guards to the crate root
+#[doc(inline)]
 pub use crate::internal::{ActorGuardShared, ActorGuardMut};
 
 /// Actor types.

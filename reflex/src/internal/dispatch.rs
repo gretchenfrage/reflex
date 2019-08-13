@@ -55,7 +55,7 @@ impl<Act: Actor> Future for ActorState<Act> {
             Some(msg) => msg,
             None => {
                 // TODO: notify something
-                trace!("no more messages, actor terminating");
+                warn!("no more messages, actor terminating");
                 return Ok(Async::Ready(()));
             },
         };

@@ -11,10 +11,10 @@ use futures::sync::mpsc;
 use futures::task::Task;
 
 /// Dereference actor guards.
-mod actor_guard_deref;
+pub mod actor_guard_deref;
 
 /// Actor dispatch task.
-mod dispatch;
+pub mod dispatch;
 
 /// Reflex's state for an actor which is owned by the actor's dispatch routine.
 pub struct ActorState<Act: Actor> {

@@ -43,7 +43,16 @@ pub trait MessageUnionMut<Act>: Sized + Message {
     fn process(self, actor: ActorGuardMut<Act>);
 }
 
+/// Types which can be valid messages.
+///
+/// Currently a blanket-impl for anything `Send` and `'static`.
+pub trait Message: Send + 'static {}
+
+impl<T: Send + 'static> Message for T {}
+
 /// Runtime value for a message sent to an actor.
+///
+/// A user of this crate is unlikely to need to directly use this enum.
 ///
 /// By representing as an enum over the actor's shared and exclusive message union types,
 /// code can pattern-match over the message's access type.
@@ -57,12 +66,3 @@ pub enum ActorMessage<Act: Actor> {
     Shared(SmallVec<[<Act::Message as MessageUnion<Act>>::Shared; 4]>),
     Mut(<Act::Message as MessageUnion<Act>>::Mut),
 }
-
-/// Types which can be valid messages.
-///
-/// Implementations are meant to be created with macros.
-///
-/// Currently a blanket-impl for anything `Send` and `'static`.
-pub trait Message: Send + 'static {}
-
-impl<T: Send + 'static> Message for T {}

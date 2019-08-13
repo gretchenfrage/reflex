@@ -3,13 +3,13 @@ name = "reflex"
 version = "0.1.0"
 authors = ["Phoenix Kahlo <kahlo.phoenix@gmail.com>"]
 edition = "2018"
-description = "actors, simple and fast."
+description = "Actors, simple and fast."
 readme = "README.md"
 
 [dependencies]
 log = "0.4.8"
 futures = "0.1.28"
+failure = "0.1.5"
 atomic = "0.4.5"
 smallvec = "0.6.10"
 crossbeam-utils = "0.6.6"
-
