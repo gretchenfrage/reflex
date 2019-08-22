@@ -1,4 +1,7 @@
 
+#[cfg(test)]
+mod test;
+
 use crate::Actor;
 use crate::msg_union::ActorMessage;
 
@@ -52,7 +55,7 @@ pub enum ActorAccessStatus {
 }
 
 /// Synchronization guard for shared (immutable) access to an actor.
-///
+///g
 /// This type is notably `'static`, and clone-shareable.
 pub struct ActorGuardShared<Act> {
     // handle to the shared state
@@ -79,3 +82,14 @@ unsafe impl<Act: Send> Send for ActorGuardShared<Act> {}
 unsafe impl<Act: Sync> Sync for ActorGuardShared<Act> {}
 unsafe impl<Act: Send> Send for ActorGuardMut<Act> {}
 unsafe impl<Act: Sync> Sync for ActorGuardMut<Act> {}
+
+
+unsafe impl<Act> Send for ActorState<Act>
+    where
+        Act: Actor + Send + Sync,
+        ActorMessage<Act>: Send {}
+
+unsafe impl<Act> Sync for ActorState<Act>
+    where
+        Act: Actor + Send + Sync,
+        ActorMessage<Act>: Send {}

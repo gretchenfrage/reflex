@@ -66,3 +66,27 @@ pub enum ActorMessage<Act: Actor> {
     Shared(SmallVec<[<Act::Message as MessageUnion<Act>>::Shared; 4]>),
     Mut(<Act::Message as MessageUnion<Act>>::Mut),
 }
+
+/// Implement MessageUnion for (), to help partially-written code compile.
+impl<Act> MessageUnion<Act> for () {
+    type Shared = ();
+    type Mut = ();
+}
+
+/// Implement MessageUnionShared for (), to help partially-written code compile.
+///
+/// Actors reacting to this message will simply debug-log.
+impl<Act> MessageUnionShared<Act> for () {
+    fn process(self, _: ActorGuardShared<Act>) {
+        debug!("actor received () message");
+    }
+}
+
+/// Implement MessageUnionMut for (), to help partially-written code compile.
+///
+/// Actors reacting to this message will simply debug-log.
+impl<Act> MessageUnionMut<Act> for () {
+    fn process(self, _: ActorGuardMut<Act>) {
+        debug!("actor received () message");
+    }
+}

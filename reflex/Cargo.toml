@@ -13,3 +13,7 @@ failure = "0.1.5"
 atomic = "0.4.5"
 smallvec = "0.6.10"
 crossbeam-utils = "0.6.6"
+
+[dev-dependencies]
+tokio = "0.1.22"
+pretty_env_logger = "0.3.1"
