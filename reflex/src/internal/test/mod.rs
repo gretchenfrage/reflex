@@ -29,6 +29,10 @@ fn test_a() {
 
         impl Actor for Foo {
             type Message = ();
+
+            type End = ();
+
+            type Subordinate = ();
         }
 
         let actor = Foo;
@@ -64,6 +68,10 @@ fn test_b() {
 
         impl Actor for Foo {
             type Message = FooUnion;
+
+            type End = ();
+
+            type Subordinate = ();
         }
 
         struct FooShared;

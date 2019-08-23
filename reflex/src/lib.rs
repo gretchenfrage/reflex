@@ -30,6 +30,16 @@ pub trait Actor: Sized + Send + Sync + 'static {
     ///
     /// This type is meant to be created with a macro.
     type Message: MessageUnion<Self>;
+
+    /// Type which is produced once upon the explicit termination of this actor.
+    type End;
+
+    /// Actor type which this actor supervises.
+    ///
+    /// Upon the termination of a subordinate, the supervisor will receive a message
+    /// containing the `Actor::End` value of the subordinate, which is produced in
+    /// conjunction with the termination of the subordinate.
+    type Subordinate: Actor;
 }
 
 /// Actor types which can process a particular message type with `&self`.
@@ -44,3 +54,12 @@ pub trait ReactMut<Msg>: Actor {
     fn process_mut(actor: ActorGuardMut<Self>, message: Msg);
 }
 
+/// Implement `Actor` for `()`, to be used as a subordinate type for actors with
+/// no subordinates.
+impl Actor for () {
+    type Message = ();
+
+    type End = ();
+
+    type Subordinate = ();
+}
