@@ -4,9 +4,8 @@ extern crate pretty_env_logger;
 
 use crate::*;
 use crate::msg_union::*;
-use crate::internal::{self, *};
+use crate::internal::*;
 use tokio::prelude::*;
-use futures::prelude::*;
 
 fn init_log() {
     use std::sync::Once;
@@ -23,8 +22,6 @@ fn test_a() {
 
     init_log();
 
-    use std::sync::RwLock;
-    use futures::sync::mpsc::*;
     use smallvec::smallvec;
 
     tokio::run(future::lazy(|| {
@@ -58,7 +55,6 @@ fn test_b() {
 
     use std::sync::RwLock;
     use std::mem::drop;
-    use futures::sync::mpsc::*;
     use smallvec::smallvec;
     use std::thread::{sleep, spawn};
     use std::time::Duration;

@@ -15,8 +15,7 @@ use futures::sync::mpsc;
 ///   - delivery (consequential to silently ignoring actor-death)
 ///   - successful processing
 /// - this type has methods which delegate to the `futures::sync::mpsc::Sender` methods:
-///   - `try_send`
-///   - `poll_ready`
+///   - `try_send` (`Mailbox::send_now`)
 ///   - `is_closed`
 pub struct Mailbox<Act: Actor> {
     sender: mpsc::Sender<ActorMessage<Act>>,
@@ -38,6 +37,34 @@ impl<Act: Actor> Mailbox<Act> {
         mailbox_futures::MailboxSend::new(self, message.into())
     }
 
+    /// Send a message to the actor, synchronously, unless there is back pressure.
+    ///
+    /// If the mailbox is full, the input message will be returned. If the message
+    /// is successfully sent, this will return None.
+    ///
+    /// As usual, if the actor is dead, this will swallow that error.
+    #[must_use = "send_now will return its input if unable to send now"]
+    pub fn send_now<Msg>(&mut self, message: Msg) -> Option<ActorMessage<Act>>
+        where
+            Msg: Into<ActorMessage<Act>> {
+
+        self.sender.try_send(message.into())
+            .err()
+            .filter(mpsc::TrySendError::is_full)
+            .map(mpsc::TrySendError::into_inner)
+    }
+
+    /// Whether the underlying channel is closed.
+    ///
+    /// If this returns true, the actor is dead. However, this may return false
+    /// negatives, where the actor is dead, but the mailbox is still open.
+    /// Consequentially, this is difficult to use correctly without introducing
+    /// race conditions.
+    ///
+    /// This method is unlikely to be the correct way to implement code.
+    pub fn is_closed(&self) -> bool {
+        self.sender.is_closed()
+    }
 }
 
 /// Future types and code for mailboxes.

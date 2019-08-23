@@ -7,7 +7,7 @@ actors. futures-based, single-process.
 
 > how?
 
-simple and fast, by virtue of little code with little complexity.
+simple and fast, by virtue of little code with little abstraction.
 
 > why?
 
