@@ -35,7 +35,7 @@ fn test_a() {
         let (
             state,
             mut send,
-        ) = dispatch::create_actor(actor);
+        ) = create::create_actor(actor);
 
         tokio::spawn(state);
 
@@ -104,7 +104,7 @@ fn test_b() {
         let (
             state,
             mut send,
-        ) = dispatch::create_actor(actor);
+        ) = create::create_actor(actor);
 
         tokio::spawn(state);
 

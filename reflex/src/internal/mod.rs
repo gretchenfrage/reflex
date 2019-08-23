@@ -1,4 +1,5 @@
 
+/// Internal tests.
 #[cfg(test)]
 mod test;
 
@@ -18,6 +19,9 @@ pub mod actor_guard_deref;
 
 /// Actor dispatch task.
 pub mod dispatch;
+
+/// Internal creation of actors.
+pub mod create;
 
 /// Reflex's state for an actor which is owned by the actor's dispatch routine.
 pub struct ActorState<Act: Actor> {
