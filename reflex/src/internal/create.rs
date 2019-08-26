@@ -1,8 +1,6 @@
 
 use super::*;
 
-use futures::prelude::*;
-
 /// Set up the internal concurrency mechanism for an actor.
 ///
 /// Returns:
@@ -46,3 +44,5 @@ pub fn create_actor_with_mailbox<Act: Actor>(
         curr_msg: None,
     }
 }
+
+// TODO: async creation

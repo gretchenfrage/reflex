@@ -32,14 +32,19 @@ pub trait Actor: Sized + Send + Sync + 'static {
     type Message: MessageUnion<Self>;
 
     /// Type which is produced once upon the explicit termination of this actor.
+    ///
+    /// TODO: out-mapping impl magic for facilitating decoupling in this situation?
     type End;
 
-    /// Actor type which this actor supervises.
+    /// The Actor::End type of subordinates to this actor.
     ///
     /// Upon the termination of a subordinate, the supervisor will receive a message
     /// containing the `Actor::End` value of the subordinate, which is produced in
     /// conjunction with the termination of the subordinate.
-    type Subordinate: Actor;
+    ///
+    /// In the case of an actor with several subordinate types, macros exist to facilitate
+    /// decoupling by creating union types.
+    type SubordinateEnd;
 }
 
 /// Actor types which can process a particular message type with `&self`.
@@ -52,14 +57,4 @@ pub trait ReactShared<Msg>: Actor {
 pub trait ReactMut<Msg>: Actor {
     // TODO: give context? spawn a future? return a future?
     fn process_mut(actor: ActorGuardMut<Self>, message: Msg);
-}
-
-/// Implement `Actor` for `()`, to be used as a subordinate type for actors with
-/// no subordinates.
-impl Actor for () {
-    type Message = ();
-
-    type End = ();
-
-    type Subordinate = ();
 }

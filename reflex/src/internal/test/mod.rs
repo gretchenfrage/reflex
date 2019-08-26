@@ -32,7 +32,7 @@ fn test_a() {
 
             type End = ();
 
-            type Subordinate = ();
+            type SubordinateEnd = ();
         }
 
         let actor = Foo;
@@ -71,7 +71,7 @@ fn test_b() {
 
             type End = ();
 
-            type Subordinate = ();
+            type SubordinateEnd = ();
         }
 
         struct FooShared;
