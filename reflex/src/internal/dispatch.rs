@@ -83,7 +83,7 @@ impl<Act: Actor> Future for ActorState<Act> {
                 trace!("beginning exclusive actor access");
 
                 let shared_state = self.shared.clone();
-                let previous_access_count = shared_state.access_count.fetch_add(1, Ordering::Relaxed);
+                let previous_access_count = shared_state.access_count.swap(1, Ordering::Relaxed);
                 debug_assert_eq!(previous_access_count, 0);
                 let dispatch_task = task::current();
 
@@ -128,8 +128,8 @@ impl<Act: Actor> ActorState<Act> {
 impl<Act> Drop for ActorGuardShared<Act> {
     fn drop(&mut self) {
         // decrement the access_count, and if we've lowered it to 0, notify the task
-        let access_count = self.shared_state.access_count.fetch_sub(1, Ordering::Relaxed) - 1;
-        if access_count == 0 {
+        let previous_access_count = self.shared_state.access_count.fetch_sub(1, Ordering::Relaxed);
+        if previous_access_count == 1 {
             trace!("access count lowered to 0, notifying dispatch task");
             self.dispatch_task.notify();
         }
@@ -141,8 +141,8 @@ impl<Act> Drop for ActorGuardMut<Act> {
         // decrement the access_count
         // since we have exclusive access, this should decrement it to 0
         // atomic-release our user_state writes to the dispatch task
-        let access_count = self.shared_state.access_count.fetch_sub(1, Ordering::Release) - 1;
-        debug_assert_eq!(access_count, 0);
+        let previous_access_count = self.shared_state.access_count.swap(0, Ordering::Release);
+        debug_assert_eq!(previous_access_count, 1);
 
         trace!("exclusive actor guard released, notifying dispatch task");
         self.dispatch_task.notify();

@@ -39,19 +39,22 @@ impl<Act: Actor> Mailbox<Act> {
 
     /// Send a message to the actor, synchronously, unless there is back pressure.
     ///
-    /// If the mailbox is full, the input message will be returned. If the message
-    /// is successfully sent, this will return None.
+    /// If the mailbox is full, the input message will be returned.
     ///
     /// As usual, if the actor is dead, this will swallow that error.
     #[must_use = "send_now will return its input if unable to send now"]
-    pub fn send_now<Msg>(&mut self, message: Msg) -> Option<ActorMessage<Act>>
+    pub fn send_now<Msg>(&mut self, message: Msg) -> Result<(), ActorMessage<Act>>
         where
             Msg: Into<ActorMessage<Act>> {
 
-        self.sender.try_send(message.into())
+        match self.sender.try_send(message.into())
             .err()
             .filter(mpsc::TrySendError::is_full)
-            .map(mpsc::TrySendError::into_inner)
+            .map(mpsc::TrySendError::into_inner) {
+
+            None => Ok(()),
+            Some(err) => Err(err),
+        }
     }
 
     /// Whether the underlying channel is closed.
@@ -130,7 +133,7 @@ pub mod mailbox_futures {
             // mostly delegation to the mailbox channel, except that we swallow error
             // Sender error is caused by actor death
 
-            // take self.mailbox, and return it if we yield
+            // take self.mailbox, and un-take it if we yield
             // if self.mailbox is None, we are being invalidly polled after returning Ready
             let mut mailbox = match self.mailbox.take() {
                 Some(mailbox) => mailbox,
@@ -142,7 +145,7 @@ pub mod mailbox_futures {
             };
 
             // delegate to Sender::start_send
-            // take self.message, and return it if we yield NotReady
+            // take self.message, and un-take it if we yield NotReady
             // if self.message is None, Sender::start_send returned Ready in a previous self.poll
             if let Some(message) = self.message.take() {
                 match mailbox.sender.start_send(message) {
