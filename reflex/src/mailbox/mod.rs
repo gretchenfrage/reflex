@@ -1,6 +1,6 @@
 
-use crate::Actor;
-use crate::msg_union::ActorMessage;
+use crate::msg_union::{MessageTypeUnion, MailboxEntry};
+use crate::internal::MsgQueueEntry;
 
 use futures::prelude::*;
 use futures::sync::mpsc;
@@ -17,24 +17,23 @@ use futures::sync::mpsc;
 /// - this type has methods which delegate to the `futures::sync::mpsc::Sender` methods:
 ///   - `try_send` (`Mailbox::send_now`)
 ///   - `is_closed`
-pub struct Mailbox<Act: Actor> {
-    sender: mpsc::Sender<ActorMessage<Act>>,
+pub struct Mailbox<T: MessageTypeUnion> {
+    sender: mpsc::Sender<MsgQueueEntry<T>>,
 }
 
-impl<Act: Actor> Mailbox<Act> {
+impl<T: MessageTypeUnion> Mailbox<T> {
     /// Crate-internal constructor.
-    pub (crate) fn from_sender(sender: mpsc::Sender<ActorMessage<Act>>) -> Self {
-        Mailbox {
-            sender,
-        }
+    pub (crate) fn from_sender(sender: mpsc::Sender<MsgQueueEntry<T>>) -> Self {
+        Mailbox { sender }
     }
 
     /// Send a message to the actor.
-    pub fn send<Msg>(self, message: Msg) -> mailbox_futures::MailboxSend<Act>
+    pub fn send<Msg>(self, message: Msg) -> mailbox_futures::MailboxSend<T>
         where
-            Msg: Into<ActorMessage<Act>> {
+            Msg: Into<MailboxEntry<T>> {
 
-        mailbox_futures::MailboxSend::new(self, message.into())
+        let msg = MsgQueueEntry::MailboxEntry(message.into());
+        mailbox_futures::MailboxSend::new(self,msg)
     }
 
     /// Send a message to the actor, synchronously, unless there is back pressure.
@@ -43,17 +42,21 @@ impl<Act: Actor> Mailbox<Act> {
     ///
     /// As usual, if the actor is dead, this will swallow that error.
     #[must_use = "send_now will return its input if unable to send now"]
-    pub fn send_now<Msg>(&mut self, message: Msg) -> Result<(), ActorMessage<Act>>
+    pub fn send_now<Msg>(&mut self, message: Msg) -> Result<(), MailboxEntry<T>>
         where
-            Msg: Into<ActorMessage<Act>> {
+            Msg: Into<MailboxEntry<T>> {
 
-        match self.sender.try_send(message.into())
+        let msg = MsgQueueEntry::MailboxEntry(message.into());
+        match self.sender.try_send(msg)
             .err()
             .filter(mpsc::TrySendError::is_full)
             .map(mpsc::TrySendError::into_inner) {
 
             None => Ok(()),
-            Some(err) => Err(err),
+            Some(rejected) => Err(match rejected {
+                MsgQueueEntry::MailboxEntry(entry) => entry,
+                _ => unreachable!(),
+            }),
         }
     }
 
@@ -70,21 +73,32 @@ impl<Act: Actor> Mailbox<Act> {
     }
 }
 
+impl<T: MessageTypeUnion> Clone for Mailbox<T> {
+    fn clone(&self) -> Self {
+        Mailbox { sender: self.sender.clone() }
+    }
+}
+
 /// Future types and code for mailboxes.
 ///
 /// Largely boilerplate.
 pub mod mailbox_futures {
     use super::*;
-    use crate::Actor;
-    use crate::msg_union::ActorMessage;
 
     // `Sink` implementation for `Mailbox`
-    impl<Act: Actor> Sink for Mailbox<Act> {
-        type SinkItem = ActorMessage<Act>;
+    impl<T: MessageTypeUnion> Sink for Mailbox<T> {
+        type SinkItem = MailboxEntry<T>;
         type SinkError = ();
 
         fn start_send(&mut self, msg: Self::SinkItem) -> StartSend<Self::SinkItem, ()> {
+            let msg = MsgQueueEntry::MailboxEntry(msg);
             self.sender.start_send(msg)
+                .map(|async_sink|
+                    async_sink.map(|rejected| match rejected {
+                        MsgQueueEntry::MailboxEntry(entry) => entry,
+                        _ => unreachable!(),
+                    })
+                )
                 .map_err(|_| trace!("mailbox Sink::start_send failure"))
         }
 
@@ -100,20 +114,21 @@ pub mod mailbox_futures {
     }
 
     /// Future for sending into a mailbox.
-    pub struct MailboxSend<Act>
+    pub struct MailboxSend<T>
         where
-            Act: Actor {
-        mailbox: Option<Mailbox<Act>>,
-        message: Option<ActorMessage<Act>>,
+            T: MessageTypeUnion {
+        mailbox: Option<Mailbox<T>>,
+        message: Option<MsgQueueEntry<T>>,
     }
 
-    impl<Act> MailboxSend<Act>
-        where Act: Actor {
+    impl<T> MailboxSend<T>
+        where
+            T: MessageTypeUnion {
 
         /// Private constructor.
         pub (super) fn new(
-            mailbox: Mailbox<Act>,
-            message: ActorMessage<Act>,
+            mailbox: Mailbox<T>,
+            message: MsgQueueEntry<T>,
         ) -> Self {
             MailboxSend {
                 mailbox: Some(mailbox),
@@ -122,11 +137,11 @@ pub mod mailbox_futures {
         }
     }
 
-    impl<Act> Future for MailboxSend<Act>
+    impl<T> Future for MailboxSend<T>
         where
-            Act: Actor, {
+            T: MessageTypeUnion, {
 
-        type Item = Mailbox<Act>;
+        type Item = Mailbox<T>;
         type Error = ();
 
         fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
@@ -179,4 +194,3 @@ pub mod mailbox_futures {
         }
     }
 }
-

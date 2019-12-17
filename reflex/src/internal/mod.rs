@@ -4,21 +4,21 @@
 mod test;
 
 use crate::Actor;
-use crate::msg_union::ActorMessage;
+use crate::msg_union::{MessageTypeUnion, MailboxEntry};
 
 use std::sync::Arc;
 use std::cell::UnsafeCell;
+use std::any::Any;
 
 use atomic::{Atomic, Ordering};
-use crossbeam_utils::CachePadded;
 use futures::sync::mpsc;
 use futures::task::Task;
 
-/// Dereference actor guards.
-pub mod actor_guard_deref;
-
 /// Actor dispatch task.
 pub mod dispatch;
+
+/// Actor guard drop implementations.
+pub mod actor_guard_impl;
 
 /// Internal creation of actors.
 pub mod create;
@@ -31,19 +31,42 @@ pub struct ActorState<Act: Actor> {
     access_status: ActorAccessStatus,
 
     // the message queue, and the slot for pushing a message back in
-    msg_recv: mpsc::Receiver<ActorMessage<Act>>,
-    curr_msg: Option<ActorMessage<Act>>,
+    msg_recv: mpsc::Receiver<ActorQueueEntry<Act>>,
+    curr_msg: Option<ActorQueueEntry<Act>>,
 }
 
 /// Reflex's state for an actor which is reference counted.
 pub struct ActorStateShared<Act> {
-    // we will cache-pad these two pieces of state
-
     // the user's actor struct, which we manually synchronize
-    user_state: CachePadded<UnsafeCell<Act>>,
+    // additionally, we make unsafe assumptions on when this is the Some variant
+    user_state: UnsafeCell<Option<Act>>,
+
     // the current number of guards accessing (mutably or immutably) the user state
-    access_count: CachePadded<Atomic<u32>>,
+    access_count: Atomic<u32>,
+    // atomic memory for an actor guard to tell the internal actor procedure that
+    // the guard is releasing in some relevant non-default way
+    release_mode: Atomic<ReleaseMode>,
+
 }
+
+/// The runtime value directly transmitted through an Actor's message queue.
+///
+/// A `MailboxEntry`, sent through the mailbox, is stored in-place. However, the
+/// `Actor::SubordinateEnd` value is held in a type-erased heap allocation. This allows
+/// for polymorphism of the actor type receiving messages from a queue, so long as they
+/// have the same message union type. The cost of this tradeoff is heap allocation upon
+/// actor death.
+///
+/// **The downcasting will be performed unsafely, without an actual type check.
+/// Therefore, it will cause UB to transmit the incorrect type in
+/// `MsgQueueEntry::SubordinateEnd`.**
+pub enum MsgQueueEntry<T: MessageTypeUnion> {
+    MailboxEntry(MailboxEntry<T>),
+    SubordinateEnd(Box<dyn Any + Send>),
+}
+
+/// Convenience type constructor from `A: Actor` -> `MsgQueueEntry<_>`.
+pub type ActorQueueEntry<A> = MsgQueueEntry<<A as Actor>::Message>;
 
 /// The way in which an actor is currently being accessed, equivalent to the state of a
 /// read/write lock.
@@ -58,9 +81,80 @@ pub enum ActorAccessStatus {
     Exclusive,
 }
 
+/// A possible indicator of an actor guard releasing in some non-default way.
+///
+/// This warrants special handling by the internal actor state. This value
+/// is conveyed to the internal actor state through atomic operations.
+///
+/// TODO: make a note here on the non-obvious semantics of what it means for the
+///       actor routine to "observe" this
+#[derive(Copy, Clone, Eq, PartialEq, Debug)]
+pub enum ReleaseMode {
+    /// There is nothing notable about the release mode.
+    ///
+    /// If the actor routine observes:
+    /// ```no_run,noplaypen
+    /// release_mode = Normal
+    /// access_count = 0
+    /// ```
+    /// Then the actor routine should assume that the actor is in an
+    /// *unlocked* state.
+    Normal,
+    /// An `ActorGuardMut` is downgrading itself to an `ActorGuardShared`, allowing
+    /// other threads to concurrently read.
+    ///
+    /// If the actor routine observes:
+    /// ```no_run,noplaypen
+    /// release_mode = Downgrade
+    /// access_count = 1
+    /// ```
+    /// Then the actor routine should assume that the actor is in an
+    /// *unlocked* state.
+    ///
+    /// If the actor routine observes:
+    /// ```no_run,noplaypen
+    /// release_mode = Downgrade
+    /// access_count = 0
+    /// ```
+    /// This suggests that a mutable guard downgraded, then released, before the
+    /// actor routine was polled in time to observe its downgraded state. The actor
+    /// should treat this like it would the *unlocked* state in general (but make sure
+    /// to reset the release mode to `Normal`).
+    ///
+    /// It is **invalid** for the actor routine to observe:
+    /// ```no_run,noplaypen
+    /// release_mode = Downgrade
+    /// access_count > 1
+    /// ```
+    Downgrade,
+    /// An `ActorGuardMut` is deleting the actor.
+    ///
+    /// If the actor routine observes:
+    /// ```no_run,noplaypen
+    /// release_mode = Delete
+    /// access_count = 0
+    /// ```
+    /// Then the actor routine should assume that the `user_state` has been set
+    /// to `None`, and that the actor should terminate.
+    ///
+    /// In this scenario, the thread which triggered the deletion took ownership
+    /// of the user state, and is therefore responsible for dropping it.
+    ///
+    /// Furthermore, this is the only situation in which it is allowed for the actor
+    /// routine not to observe `user_state` in the `Some` variant.
+    ///
+    /// It is **invalid** for the actor routine to observe:
+    /// ```no_run,noplaypen
+    /// release_mode = Delete
+    /// access_count != 0
+    /// ```
+    Delete,
+}
+
 /// Synchronization guard for shared (immutable) access to an actor.
-///g
+///
 /// This type is notably `'static`, and clone-shareable.
+#[repr(C)]
 pub struct ActorGuardShared<Act> {
     // handle to the shared state
     shared_state: Arc<ActorStateShared<Act>>,
@@ -73,6 +167,7 @@ pub struct ActorGuardShared<Act> {
 /// Synchronization guard for exclusive (mutable) access to an actor.
 ///
 /// This type is notably `'static`.
+#[repr(C)]
 pub struct ActorGuardMut<Act> {
     // handle to the shared state
     shared_state: Arc<ActorStateShared<Act>>,
@@ -91,9 +186,9 @@ unsafe impl<Act: Sync> Sync for ActorGuardMut<Act> {}
 unsafe impl<Act> Send for ActorState<Act>
     where
         Act: Actor + Send + Sync,
-        ActorMessage<Act>: Send {}
+        ActorQueueEntry<Act>: Send {}
 
 unsafe impl<Act> Sync for ActorState<Act>
     where
         Act: Actor + Send + Sync,
-        ActorMessage<Act>: Send {}
+        ActorQueueEntry<Act>: Send {}

@@ -8,13 +8,13 @@ use super::*;
 /// 2. a message sender handle
 pub fn create_actor<Act: Actor>(user_state: Act) -> (
     ActorState<Act>,
-    mpsc::Sender<ActorMessage<Act>>,
+    mpsc::Sender<ActorQueueEntry<Act>>,
 ) {
     // create the message channel
     let (msg_send, msg_recv) = mpsc::channel(1000);
 
     // create the actor state
-    let state = create_actor_with_mailbox(user_state, msg_recv);
+    let state = create_actor_using_mailbox(user_state, msg_recv);
     
     // return
     (state, msg_send)
@@ -25,14 +25,15 @@ pub fn create_actor<Act: Actor>(user_state: Act) -> (
 ///
 /// The mailbox channel receiver is given as a parameter. This returns
 /// the actor state, which, itself, is the dispatch task future.
-pub fn create_actor_with_mailbox<Act: Actor>(
+pub fn create_actor_using_mailbox<Act: Actor>(
     user_state: Act,
-    msg_recv: mpsc::Receiver<ActorMessage<Act>>
+    msg_recv: mpsc::Receiver<ActorQueueEntry<Act>>
 ) -> ActorState<Act> {
     // create the shared state
     let state_shared = ActorStateShared {
-        user_state: CachePadded::new(UnsafeCell::new(user_state)),
-        access_count: CachePadded::new(Atomic::new(0)),
+        user_state: UnsafeCell::new(Some(user_state)),
+        access_count: Atomic::new(0),
+        release_mode: Atomic::new(ReleaseMode::Normal),
     };
     let state_shared = Arc::new(state_shared);
 

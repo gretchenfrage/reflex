@@ -6,10 +6,9 @@ extern crate log;
 extern crate futures;
 extern crate atomic;
 extern crate smallvec;
-extern crate crossbeam_utils;
 extern crate failure;
 
-use crate::msg_union::MessageUnion;
+use crate::msg_union::{Message, MessageTypeUnion};
 
 /// Internal concurrency mechanism.
 pub (crate) mod internal;
@@ -20,21 +19,27 @@ pub mod msg_union;
 /// Handles for sending messages to actors.
 pub mod mailbox;
 
+/// Actors supervising other actors.
+pub mod supervise;
+
 // re-export actor guards to the crate root
 #[doc(inline)]
 pub use crate::internal::{ActorGuardShared, ActorGuardMut};
 
 /// Actor types.
+///
+/// This trait is meant to be implemented with macros.
 pub trait Actor: Sized + Send + Sync + 'static {
-    /// Union type for messages which this actor can process.
+    /// Message types which this actor can process.
     ///
-    /// This type is meant to be created with a macro.
-    type Message: MessageUnion<Self>;
+    /// This type is meant to be implemented with macros.
+    type Message: MessageTypeUnion;
 
-    /// Type which is produced once upon the explicit termination of this actor.
+    /// Type which signals the intentional termination of this actor.
     ///
-    /// TODO: out-mapping impl magic for facilitating decoupling in this situation?
-    type End;
+    /// Terminating an actor through an `ActorGuardMut` requires the provision of an
+    /// instance of its end value.
+    type End: Message;
 
     /// The Actor::End type of subordinates to this actor.
     ///
@@ -42,19 +47,34 @@ pub trait Actor: Sized + Send + Sync + 'static {
     /// containing the `Actor::End` value of the subordinate, which is produced in
     /// conjunction with the termination of the subordinate.
     ///
-    /// In the case of an actor with several subordinate types, macros exist to facilitate
-    /// decoupling by creating union types.
-    type SubordinateEnd;
+    /// In the case of an actor with several subordinate types, macros exist to
+    /// facilitate decoupling by creating union types.
+    type SubordinateEnd: Message;
+
+    fn handle_msg_shared(
+        actor: ActorGuardShared<Self>,
+        msg: <Self::Message as MessageTypeUnion>::SharedUnion,
+    );
+
+    fn handle_msg_mut(
+        actor: ActorGuardMut<Self>,
+        msg: <Self::Message as MessageTypeUnion>::MutUnion,
+    );
+
+    fn handle_subordinate_end(
+        actor: ActorGuardMut<Self>,
+        msg: Self::SubordinateEnd,
+    );
 }
 
 /// Actor types which can process a particular message type with `&self`.
-pub trait ReactShared<Msg>: Actor {
+pub trait ReactShared<Msg>: Sized {
     // TODO: give context? spawn a future? return a future?
     fn process(actor: ActorGuardShared<Self>, message: Msg);
 }
 
 /// Actor types which can process a particular message type with `&mut self`.
-pub trait ReactMut<Msg>: Actor {
+pub trait ReactMut<Msg>: Sized {
     // TODO: give context? spawn a future? return a future?
     fn process_mut(actor: ActorGuardMut<Self>, message: Msg);
 }
