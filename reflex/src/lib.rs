@@ -13,6 +13,9 @@ use crate::msg_union::{Message, MessageTypeUnion};
 /// Internal concurrency mechanism.
 pub (crate) mod internal;
 
+/// Internal utilities which could be factored out.
+pub (crate) mod util;
+
 /// Union types for messages which actors can process.
 pub mod msg_union;
 
