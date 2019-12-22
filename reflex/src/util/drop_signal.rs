@@ -1,6 +1,6 @@
 
 use std::{
-    sync::{Arc, Weak as WeakArc},
+    sync::Arc,
     convert::Infallible,
 };
 
