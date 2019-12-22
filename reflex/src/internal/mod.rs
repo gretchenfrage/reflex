@@ -5,15 +5,10 @@ mod test;
 
 use self::queue::{MsgQueue, MsgQueueEntry};
 use crate::Actor;
-use crate::msg_union::{
-    MessageTypeUnion,
-    MailboxEntry,
-    ActorMailboxEntry,
-};
+use crate::msg_union::ActorMailboxEntry;
 
 use std::sync::Arc;
 use std::cell::UnsafeCell;
-use std::any::Any;
 
 use atomic::{Atomic, Ordering};
 use futures::sync::mpsc;

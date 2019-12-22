@@ -24,7 +24,7 @@ pub struct DropSignalRecv {
 
 impl Drop for DropSignalSend {
     fn drop(&mut self) {
-        let mut send = self.send.take().unwrap();
+        let send = self.send.take().unwrap();
         let _ = send.send(());
     }
 }

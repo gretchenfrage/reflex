@@ -1,5 +1,6 @@
 
 use super::*;
+use crate::msg_union::MailboxEntry;
 
 use std::hint::unreachable_unchecked;
 

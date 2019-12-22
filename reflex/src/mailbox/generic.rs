@@ -1,6 +1,6 @@
 
 use super::ownership::Ownership;
-use crate::msg_union::{MessageTypeUnion, MailboxEntry, ActorMailboxEntry};
+use crate::msg_union::{MessageTypeUnion, MailboxEntry};
 
 use futures::prelude::*;
 use futures::sync::mpsc;
