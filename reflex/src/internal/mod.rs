@@ -23,6 +23,9 @@ pub mod actor_guard_impl;
 /// Internal creation of actors.
 pub mod create;
 
+/// Abstraction over message queues.
+pub mod queue;
+
 /// Reflex's state for an actor which is owned by the actor's dispatch routine.
 pub struct ActorState<Act: Actor> {
     // handle to the shared state
@@ -34,6 +37,7 @@ pub struct ActorState<Act: Actor> {
     msg_recv: mpsc::Receiver<ActorQueueEntry<Act>>,
     curr_msg: Option<ActorQueueEntry<Act>>,
 }
+
 
 /// Reflex's state for an actor which is reference counted.
 pub struct ActorStateShared<Act> {
@@ -49,6 +53,7 @@ pub struct ActorStateShared<Act> {
 
 }
 
+// /*
 /// The runtime value directly transmitted through an Actor's message queue.
 ///
 /// A `MailboxEntry`, sent through the mailbox, is stored in-place. However, the
@@ -65,8 +70,10 @@ pub enum MsgQueueEntry<T: MessageTypeUnion> {
     SubordinateEnd(Box<dyn Any + Send>),
 }
 
+
 /// Convenience type constructor from `A: Actor` -> `MsgQueueEntry<_>`.
 pub type ActorQueueEntry<A> = MsgQueueEntry<<A as Actor>::Message>;
+// */
 
 /// The way in which an actor is currently being accessed, equivalent to the state of a
 /// read/write lock.
