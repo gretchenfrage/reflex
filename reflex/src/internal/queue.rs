@@ -18,7 +18,7 @@ pub struct MsgQueue<Act: Actor> {
     mailbox_recv: Fuse<mpsc::Receiver<
         MailboxEntry<<Act as Actor>::Message>
     >>,
-    subordinate_end_recv: Fuse<mpsc::UnboundedReceiver<
+    sub_end_recv: Fuse<mpsc::UnboundedReceiver<
         <Act as Actor>::SubordinateEnd
     >>,
 }
@@ -29,12 +29,24 @@ pub enum MsgQueueEntry<Act: Actor> {
     SubordinateEnd(<Act as Actor>::SubordinateEnd),
 }
 
+impl<Act: Actor> MsgQueue<Act> {
+    pub fn new(
+        mailbox_recv: mpsc::Receiver<MailboxEntry<<Act as Actor>::Message>>,
+        sub_end_recv: mpsc::UnboundedReceiver<<Act as Actor>::SubordinateEnd>,
+    ) -> Self {
+        MsgQueue {
+            mailbox_recv: mailbox_recv.fuse(),
+            sub_end_recv: sub_end_recv.fuse(),
+        }
+    }
+}
+
 impl<Act: Actor> Stream for MsgQueue<Act> {
     type Item = MsgQueueEntry<Act>;
     type Error = ();
 
     fn poll(&mut self) -> Poll<Option<Self::Item>, Self::Error> {
-        let a = &mut self.subordinate_end_recv;
+        let a = &mut self.sub_end_recv;
         let b = &mut self.mailbox_recv;
 
         let mut blocked = false;

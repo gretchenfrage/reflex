@@ -3,8 +3,13 @@
 #[cfg(test)]
 mod test;
 
+use self::queue::{MsgQueue, MsgQueueEntry};
 use crate::Actor;
-use crate::msg_union::{MessageTypeUnion, MailboxEntry};
+use crate::msg_union::{
+    MessageTypeUnion,
+    MailboxEntry,
+    ActorMailboxEntry,
+};
 
 use std::sync::Arc;
 use std::cell::UnsafeCell;
@@ -34,8 +39,8 @@ pub struct ActorState<Act: Actor> {
     access_status: ActorAccessStatus,
 
     // the message queue, and the slot for pushing a message back in
-    msg_recv: mpsc::Receiver<ActorQueueEntry<Act>>,
-    curr_msg: Option<ActorQueueEntry<Act>>,
+    msg_recv: MsgQueue<Act>,
+    curr_msg: Option<MsgQueueEntry<Act>>,
 }
 
 
@@ -52,28 +57,6 @@ pub struct ActorStateShared<Act> {
     release_mode: Atomic<ReleaseMode>,
 
 }
-
-// /*
-/// The runtime value directly transmitted through an Actor's message queue.
-///
-/// A `MailboxEntry`, sent through the mailbox, is stored in-place. However, the
-/// `Actor::SubordinateEnd` value is held in a type-erased heap allocation. This allows
-/// for polymorphism of the actor type receiving messages from a queue, so long as they
-/// have the same message union type. The cost of this tradeoff is heap allocation upon
-/// actor death.
-///
-/// **The downcasting will be performed unsafely, without an actual type check.
-/// Therefore, it will cause UB to transmit the incorrect type in
-/// `MsgQueueEntry::SubordinateEnd`.**
-pub enum MsgQueueEntry<T: MessageTypeUnion> {
-    MailboxEntry(MailboxEntry<T>),
-    SubordinateEnd(Box<dyn Any + Send>),
-}
-
-
-/// Convenience type constructor from `A: Actor` -> `MsgQueueEntry<_>`.
-pub type ActorQueueEntry<A> = MsgQueueEntry<<A as Actor>::Message>;
-// */
 
 /// The way in which an actor is currently being accessed, equivalent to the state of a
 /// read/write lock.
@@ -193,9 +176,9 @@ unsafe impl<Act: Sync> Sync for ActorGuardMut<Act> {}
 unsafe impl<Act> Send for ActorState<Act>
     where
         Act: Actor + Send + Sync,
-        ActorQueueEntry<Act>: Send {}
+        ActorMailboxEntry<Act>: Send {}
 
 unsafe impl<Act> Sync for ActorState<Act>
     where
         Act: Actor + Send + Sync,
-        ActorQueueEntry<Act>: Send {}
+        ActorMailboxEntry<Act>: Send {}

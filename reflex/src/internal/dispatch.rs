@@ -166,13 +166,7 @@ impl<Act: Actor> Future for ActorState<Act> {
                     Act::handle_msg_mut(guard, msg);
                 },
             },
-            MsgQueueEntry::SubordinateEnd(erased) => {
-                let msg: Act::SubordinateEnd = unsafe {
-                    match erased.downcast::<Act::SubordinateEnd>() {
-                        Ok(msg) => *msg,
-                        Err(_) => unreachable_unchecked(),
-                    }
-                };
+            MsgQueueEntry::SubordinateEnd(msg) => {
                 let guard = acquire_guard_mut(self);
                 Act::handle_subordinate_end(guard, msg);
             },

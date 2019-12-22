@@ -1,7 +1,6 @@
 
 use super::ownership::Ownership;
-use crate::msg_union::{MessageTypeUnion, MailboxEntry};
-use crate::internal::MsgQueueEntry;
+use crate::msg_union::{MessageTypeUnion, MailboxEntry, ActorMailboxEntry};
 
 use futures::prelude::*;
 use futures::sync::mpsc;
@@ -19,14 +18,14 @@ use futures::sync::mpsc;
 ///   - `try_send` (`Mailbox::send_now`)
 ///   - `is_closed`
 pub struct Mailbox<T: MessageTypeUnion, O: Ownership> {
-    pub(super) sender: mpsc::Sender<MsgQueueEntry<T>>,
+    pub(super) sender: mpsc::Sender<MailboxEntry<T>>,
     pub(super) ownership: O,
 }
 
 impl<T: MessageTypeUnion, O: Ownership> Mailbox<T, O> {
     /// Crate-internal constructor.
     pub (crate) fn new(
-        sender: mpsc::Sender<MsgQueueEntry<T>>,
+        sender: mpsc::Sender<MailboxEntry<T>>,
         ownership: O,
     ) -> Self {
         Mailbox { sender, ownership, }
@@ -37,7 +36,7 @@ impl<T: MessageTypeUnion, O: Ownership> Mailbox<T, O> {
         where
             Msg: Into<MailboxEntry<T>> {
 
-        let msg = MsgQueueEntry::MailboxEntry(message.into());
+        let msg = message.into();
         mailbox_futures::MailboxSend::new(self,msg)
     }
 
@@ -51,17 +50,14 @@ impl<T: MessageTypeUnion, O: Ownership> Mailbox<T, O> {
         where
             Msg: Into<MailboxEntry<T>> {
 
-        let msg = MsgQueueEntry::MailboxEntry(message.into());
+        let msg = message.into();
         match self.sender.try_send(msg)
             .err()
             .filter(mpsc::TrySendError::is_full)
             .map(mpsc::TrySendError::into_inner) {
 
             None => Ok(()),
-            Some(rejected) => Err(match rejected {
-                MsgQueueEntry::MailboxEntry(entry) => entry,
-                _ => unreachable!(),
-            }),
+            Some(rejected) => Err(rejected),
         }
     }
 
@@ -99,14 +95,7 @@ pub mod mailbox_futures {
         type SinkError = ();
 
         fn start_send(&mut self, msg: Self::SinkItem) -> StartSend<Self::SinkItem, ()> {
-            let msg = MsgQueueEntry::MailboxEntry(msg);
             self.sender.start_send(msg)
-                .map(|async_sink|
-                    async_sink.map(|rejected| match rejected {
-                        MsgQueueEntry::MailboxEntry(entry) => entry,
-                        _ => unreachable!(),
-                    })
-                )
                 .map_err(|_| trace!("mailbox Sink::start_send failure"))
         }
 
@@ -127,7 +116,7 @@ pub mod mailbox_futures {
             T: MessageTypeUnion,
             O: Ownership {
         mailbox: Option<Mailbox<T, O>>,
-        message: Option<MsgQueueEntry<T>>,
+        message: Option<MailboxEntry<T>>,
     }
 
     impl<T, O> MailboxSend<T, O>
@@ -137,7 +126,7 @@ pub mod mailbox_futures {
         /// Private constructor.
         pub (super) fn new(
             mailbox: Mailbox<T, O>,
-            message: MsgQueueEntry<T>,
+            message: MailboxEntry<T>,
         ) -> Self {
             MailboxSend {
                 mailbox: Some(mailbox),

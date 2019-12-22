@@ -1,4 +1,6 @@
 
+use crate::Actor;
+
 use smallvec::SmallVec;
 
 /// Types which can be valid messages.
@@ -33,6 +35,9 @@ pub enum MailboxEntry<T: MessageTypeUnion> {
     Shared(SmallVec<[<T as MessageTypeUnion>::SharedUnion; 4]>),
     Mut(<T as MessageTypeUnion>::MutUnion),
 }
+
+/// Convenience type constructor from `Act: Actor` -> `MailboxEntry<_>`.
+pub type ActorMailboxEntry<Act> = MailboxEntry<<Act as Actor>::Message>;
 
 /// Implement MessageUnion for (), to help partially-written code compile.
 impl MessageTypeUnion for () {
