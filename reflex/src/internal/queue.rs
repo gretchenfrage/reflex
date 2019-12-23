@@ -2,24 +2,32 @@
 use crate::{
     Actor,
     msg_union::MailboxEntry,
+    util::drop_signal::DropSignalRecv,
 };
 
+use std::convert::Infallible;
+
 use futures::{
-    Stream, Poll, Async,
+    Stream, Future, Poll, Async,
     sync::mpsc,
     stream::Fuse,
 };
 
 /// Abstraction over actor message queues.
 ///
-/// Contains the unbounded subordinate-end queue, and the bounded mailbox-recv queue.
-/// The subordinate-end queue is drained with higher priority.
+/// Not round-robin; prioritizes queues over other queues, in a deliberate order.
+///
+/// May be polled after completion without concern.
+///
+/// Instead of actually emitting an element upon receiving the drop signal, the queue
+/// simply terminates. This may change in the future, to facilitate drop recovery.
 pub struct MsgQueue<Act: Actor> {
-    mailbox_recv: Fuse<mpsc::Receiver<
-        MailboxEntry<<Act as Actor>::Message>
-    >>,
+    kil_sig_recv: DropSignalRecv,
     sub_end_recv: Fuse<mpsc::UnboundedReceiver<
         <Act as Actor>::SubordinateEnd
+    >>,
+    mailbox_recv: Fuse<mpsc::Receiver<
+        MailboxEntry<<Act as Actor>::Message>
     >>,
 }
 
@@ -31,10 +39,12 @@ pub enum MsgQueueEntry<Act: Actor> {
 
 impl<Act: Actor> MsgQueue<Act> {
     pub fn new(
+        kil_sig_recv: DropSignalRecv,
         mailbox_recv: mpsc::Receiver<MailboxEntry<<Act as Actor>::Message>>,
         sub_end_recv: mpsc::UnboundedReceiver<<Act as Actor>::SubordinateEnd>,
     ) -> Self {
         MsgQueue {
+            kil_sig_recv,
             mailbox_recv: mailbox_recv.fuse(),
             sub_end_recv: sub_end_recv.fuse(),
         }
@@ -46,10 +56,17 @@ impl<Act: Actor> Stream for MsgQueue<Act> {
     type Error = ();
 
     fn poll(&mut self) -> Poll<Option<Self::Item>, Self::Error> {
-        let a = &mut self.sub_end_recv;
-        let b = &mut self.mailbox_recv;
+        //let a = &mut self.sub_end_recv;
+        //let b = &mut self.mailbox_recv;
 
         let mut blocked = false;
+
+        match self.kil_sig_recv.poll() {
+            Ok(Async::Ready(())) => return Ok(Async::Ready(None)),
+            Ok(Async::NotReady) => (),
+
+            Err(never) => match never {},
+        };
 
         fn async_flatten<'a, A, B, F: FnOnce(A) -> B + 'a>(
             map: F,
@@ -64,10 +81,10 @@ impl<Act: Actor> Stream for MsgQueue<Act> {
             }
         }
 
-        a.poll()
+        self.sub_end_recv.poll()
             .map(async_flatten(MsgQueueEntry::SubordinateEnd, &mut blocked))
             .transpose()
-            .or_else(|| b
+            .or_else(|| self.mailbox_recv
                 .poll()
                 .map(async_flatten(MsgQueueEntry::MailboxEntry, &mut blocked))
                 .transpose()

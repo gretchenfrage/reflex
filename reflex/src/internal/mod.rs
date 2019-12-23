@@ -50,7 +50,6 @@ pub struct ActorStateShared<Act> {
     // atomic memory for an actor guard to tell the internal actor procedure that
     // the guard is releasing in some relevant non-default way
     release_mode: Atomic<ReleaseMode>,
-
 }
 
 /// The way in which an actor is currently being accessed, equivalent to the state of a

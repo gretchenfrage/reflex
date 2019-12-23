@@ -2,6 +2,7 @@
 use super::*;
 use super::queue::MsgQueue;
 use crate::msg_union::ActorMailboxEntry;
+use crate::util::drop_signal::{DropSignalSend, DropSignalRecv, drop_signal_channel};
 
 /// Set up the internal concurrency mechanism for an actor.
 ///
@@ -9,10 +10,12 @@ use crate::msg_union::ActorMailboxEntry;
 /// 1. the actor state, which, itself, is the dispatch task future
 /// 2. a message sender handle
 /// 3. a subordinate end sender handle
+/// 4. the drop signal sender which signals that the actor is orphaned
 pub fn create_actor<Act: Actor>(user_state: Act) -> (
     ActorState<Act>,
     mpsc::Sender<ActorMailboxEntry<Act>>,
     mpsc::UnboundedSender<<Act as Actor>::SubordinateEnd>,
+    DropSignalSend,
 ) {
     // create the message channels
     let (
@@ -23,14 +26,22 @@ pub fn create_actor<Act: Actor>(user_state: Act) -> (
         sub_end_send,
         sub_end_recv
     ) = mpsc::unbounded();
+    let (
+        kil_sig_send,
+        kil_sig_recv,
+    ) = drop_signal_channel();
 
-    let msg_recv = MsgQueue::new(mailbox_recv, sub_end_recv);
+    let msg_recv = MsgQueue::new(
+        kil_sig_recv,
+        mailbox_recv,
+        sub_end_recv,
+    );
 
     // create the actor state
     let state = create_actor_using_mailbox(user_state, msg_recv);
     
     // return
-    (state, mailbox_send, sub_end_send)
+    (state, mailbox_send, sub_end_send, kil_sig_send)
 }
 
 /// Set up the internal concurrency mechanism for an actor, except its

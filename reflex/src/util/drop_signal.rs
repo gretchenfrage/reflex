@@ -17,6 +17,8 @@ pub struct DropSignalSend {
 }
 
 /// Paired with a `DropSignalSend`, completes when the other end is dropped.
+///
+/// May be polled any number of times, even after completion.
 pub struct DropSignalRecv {
     recv: oneshot::Receiver<()>,
     dead: bool,
