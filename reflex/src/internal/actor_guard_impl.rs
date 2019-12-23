@@ -34,6 +34,12 @@ impl<Act: Actor> ActorGuardMut<Act> {
 
     /// Delete this actor, and extract the inner state.
     pub fn delete(guard: Self, end: Act::End) -> Act {
+        // send the end message to this actor's manager
+        let res = guard.shared_state.end_signal_send.unbounded_send(end);
+        if res.is_err() {
+            trace!("actor was explicitly terminated, but parent is already dead");
+        }
+
         // extract user state
         // be careful, because this invalidates our internal ptr
         let user_state: Act = unsafe {
