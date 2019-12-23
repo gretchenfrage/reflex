@@ -72,12 +72,10 @@ pub trait Actor: Sized + Send + Sync + 'static {
 
 /// Actor types which can process a particular message type with `&self`.
 pub trait ReactShared<Msg>: Actor + Sized {
-    // TODO: give context? spawn a future? return a future?
     fn process(actor: ActorGuardShared<Self>, message: Msg);
 }
 
 /// Actor types which can process a particular message type with `&mut self`.
 pub trait ReactMut<Msg>: Actor + Sized {
-    // TODO: give context? spawn a future? return a future?
     fn process_mut(actor: ActorGuardMut<Self>, message: Msg);
 }

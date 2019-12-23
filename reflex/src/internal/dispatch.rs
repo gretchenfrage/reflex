@@ -67,7 +67,6 @@ impl<Act: Actor> Future for ActorState<Act> {
             },
             ReleaseMode::Delete => {
                 // terminate actor routine
-                // TODO: notify something
                 trace!("actor deleted, terminating routine");
                 return Ok(Async::Ready(()));
             },
