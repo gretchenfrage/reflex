@@ -5,8 +5,6 @@ use crate::{
     util::drop_signal::DropSignalRecv,
 };
 
-use std::convert::Infallible;
-
 use futures::{
     Stream, Future, Poll, Async,
     sync::mpsc,

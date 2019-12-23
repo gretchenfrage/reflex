@@ -60,7 +60,7 @@ impl<Act: Actor> ActorGuardMut<Act> {
 
 // == drop impls ==
 
-impl<Act> Drop for ActorGuardShared<Act> {
+impl<Act: Actor> Drop for ActorGuardShared<Act> {
     fn drop(&mut self) {
         // decrement the access_count, and if we've lowered it to 0, notify the task
         let previous_access_count = self.shared_state.access_count.fetch_sub(1, Ordering::Relaxed);
@@ -71,7 +71,7 @@ impl<Act> Drop for ActorGuardShared<Act> {
     }
 }
 
-impl<Act> Drop for ActorGuardMut<Act> {
+impl<Act: Actor> Drop for ActorGuardMut<Act> {
     fn drop(&mut self) {
         // decrement the access_count
         // since we have exclusive access, this should decrement it to 0
@@ -85,7 +85,7 @@ impl<Act> Drop for ActorGuardMut<Act> {
 }
 
 // implementation for cloning the shared actor guard
-impl<Act> Clone for ActorGuardShared<Act> {
+impl<Act: Actor> Clone for ActorGuardShared<Act> {
     fn clone(&self) -> Self {
         // increment the access count, then the rest is straight-forward cloning
         self.shared_state.access_count.fetch_add(1, Ordering::Relaxed);
@@ -100,7 +100,7 @@ impl<Act> Clone for ActorGuardShared<Act> {
 
 // == deref impls ==
 
-impl<Act> Deref for ActorGuardShared<Act> {
+impl<Act: Actor> Deref for ActorGuardShared<Act> {
     type Target = Act;
 
     fn deref(&self) -> &Act {
@@ -110,7 +110,7 @@ impl<Act> Deref for ActorGuardShared<Act> {
     }
 }
 
-impl<Act> Deref for ActorGuardMut<Act> {
+impl<Act: Actor> Deref for ActorGuardMut<Act> {
     type Target = Act;
 
     fn deref(&self) -> &Act {
@@ -120,7 +120,7 @@ impl<Act> Deref for ActorGuardMut<Act> {
     }
 }
 
-impl<Act> DerefMut for ActorGuardMut<Act> {
+impl<Act: Actor> DerefMut for ActorGuardMut<Act> {
     fn deref_mut(&mut self) -> &mut Act {
         unsafe {
             &mut *self.ptr

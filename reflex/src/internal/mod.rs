@@ -40,7 +40,7 @@ pub struct ActorState<Act: Actor> {
 
 
 /// Reflex's state for an actor which is reference counted.
-pub struct ActorStateShared<Act> {
+pub struct ActorStateShared<Act: Actor> {
     // the user's actor struct, which we manually synchronize
     // additionally, we make unsafe assumptions on when this is the Some variant
     user_state: UnsafeCell<Option<Act>>,
@@ -50,6 +50,9 @@ pub struct ActorStateShared<Act> {
     // atomic memory for an actor guard to tell the internal actor procedure that
     // the guard is releasing in some relevant non-default way
     release_mode: Atomic<ReleaseMode>,
+
+    // channel to notify manager actor of explicit termination
+    end_signal_send: mpsc::UnboundedSender<<Act as Actor>::End>,
 }
 
 /// The way in which an actor is currently being accessed, equivalent to the state of a
@@ -139,7 +142,7 @@ pub enum ReleaseMode {
 ///
 /// This type is notably `'static`, and clone-shareable.
 #[repr(C)]
-pub struct ActorGuardShared<Act> {
+pub struct ActorGuardShared<Act: Actor> {
     // handle to the shared state
     shared_state: Arc<ActorStateShared<Act>>,
     // handle to the actor's dispatch task, to wake it up when it unblocks the task
@@ -152,7 +155,7 @@ pub struct ActorGuardShared<Act> {
 ///
 /// This type is notably `'static`.
 #[repr(C)]
-pub struct ActorGuardMut<Act> {
+pub struct ActorGuardMut<Act: Actor> {
     // handle to the shared state
     shared_state: Arc<ActorStateShared<Act>>,
     // handle to the actor's dispatch task, to wake it up when it unblocks the task
@@ -161,10 +164,10 @@ pub struct ActorGuardMut<Act> {
     ptr: *mut Act,
 }
 
-unsafe impl<Act: Send> Send for ActorGuardShared<Act> {}
-unsafe impl<Act: Sync> Sync for ActorGuardShared<Act> {}
-unsafe impl<Act: Send> Send for ActorGuardMut<Act> {}
-unsafe impl<Act: Sync> Sync for ActorGuardMut<Act> {}
+unsafe impl<Act: Send + Actor> Send for ActorGuardShared<Act> {}
+unsafe impl<Act: Sync + Actor> Sync for ActorGuardShared<Act> {}
+unsafe impl<Act: Send + Actor> Send for ActorGuardMut<Act> {}
+unsafe impl<Act: Sync + Actor> Sync for ActorGuardMut<Act> {}
 
 
 unsafe impl<Act> Send for ActorState<Act>
