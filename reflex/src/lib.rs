@@ -22,9 +22,6 @@ pub mod msg_union;
 /// Handles for sending messages to actors.
 pub mod mailbox;
 
-/// Actors supervising other actors.
-pub mod supervise;
-
 // re-export actor guards to the crate root
 #[doc(inline)]
 pub use crate::internal::{ActorGuardShared, ActorGuardMut};
