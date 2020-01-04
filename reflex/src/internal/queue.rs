@@ -54,9 +54,6 @@ impl<Act: Actor> Stream for MsgQueue<Act> {
     type Error = ();
 
     fn poll(&mut self) -> Poll<Option<Self::Item>, Self::Error> {
-        //let a = &mut self.sub_end_recv;
-        //let b = &mut self.mailbox_recv;
-
         let mut blocked = false;
 
         match self.kil_sig_recv.poll() {
