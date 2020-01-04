@@ -53,6 +53,10 @@ pub struct ActorStateShared<Act: Actor> {
 
     // channel to notify manager actor of explicit termination
     end_signal_send: mpsc::UnboundedSender<<Act as Actor>::End>,
+
+    // the `end_signal_send` field to be cloned out to subordinates
+    // this queue connects to this own actor's MsgQueue
+    subord_end_signal_send: mpsc::UnboundedSender<<Act as Actor>::SubordinateEnd>,
 }
 
 /// The way in which an actor is currently being accessed, equivalent to the state of a

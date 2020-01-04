@@ -9,15 +9,13 @@ use crate::util::drop_signal::{DropSignalSend, drop_signal_channel};
 /// Returns:
 /// 1. the actor state, which, itself, is the dispatch task future
 /// 2. a message sender handle
-/// 3. a subordinate end sender handle
-/// 4. the drop signal sender which signals that the actor is orphaned
+/// 3. the drop signal sender which signals that the actor is orphaned
 pub fn create_actor<Act: Actor>(
     user_state: Act,
     end_signal_send: mpsc::UnboundedSender<Act::End>
 ) -> (
     ActorState<Act>,
     mpsc::Sender<ActorMailboxEntry<Act>>,
-    mpsc::UnboundedSender<<Act as Actor>::SubordinateEnd>,
     DropSignalSend,
 ) {
     // create the message channels
@@ -41,10 +39,15 @@ pub fn create_actor<Act: Actor>(
     );
 
     // create the actor state
-    let state = create_actor_using_mailbox(user_state, msg_recv, end_signal_send);
+    let state = create_actor_using_mailbox(
+        user_state,
+        msg_recv,
+        end_signal_send,
+        sub_end_send,
+    );
     
     // return
-    (state, mailbox_send, sub_end_send, kil_sig_send)
+    (state, mailbox_send, kil_sig_send)
 }
 
 /// Set up the internal concurrency mechanism for an actor, except its
@@ -56,6 +59,7 @@ pub fn create_actor_using_mailbox<Act: Actor>(
     user_state: Act,
     msg_recv: MsgQueue<Act>,
     end_signal_send: mpsc::UnboundedSender<Act::End>,
+    subord_end_signal_send: mpsc::UnboundedSender<<Act as Actor>::SubordinateEnd>,
 ) -> ActorState<Act> {
     // create the shared state
     let state_shared = ActorStateShared {
@@ -63,6 +67,7 @@ pub fn create_actor_using_mailbox<Act: Actor>(
         access_count: Atomic::new(0),
         release_mode: Atomic::new(ReleaseMode::Normal),
         end_signal_send,
+        subord_end_signal_send,
     };
     let state_shared = Arc::new(state_shared);
 
