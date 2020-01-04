@@ -4,8 +4,6 @@ use crate::{
     mailbox::{
         MailboxOwned,
         MailboxWeak,
-        generic::Mailbox,
-        ownership::Supervisor,
     },
     internal::{
         create::{

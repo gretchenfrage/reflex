@@ -3,10 +3,6 @@ use crate::Actor;
 use crate::manage::SubordinateActor;
 use crate::mailbox::MailboxOwned;
 use super::{ActorGuardShared, ActorGuardMut, ReleaseMode};
-use super::create::{
-    create_actor,
-    create_actor_using_mailbox,
-};
 use super::supervise::create_subordinate;
 
 use std::ops::{Deref, DerefMut};
