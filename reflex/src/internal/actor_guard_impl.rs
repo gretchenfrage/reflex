@@ -1,9 +1,12 @@
 
 use crate::Actor;
-use crate::manage::SubordinateActor;
+use crate::manage::{SubordinateActor, ActorSocket};
 use crate::mailbox::MailboxOwned;
 use super::{ActorGuardShared, ActorGuardMut, ReleaseMode};
-use super::supervise::create_subordinate;
+use super::supervise::{
+    create_subordinate,
+    create_subordinate_socket,
+};
 
 use std::ops::{Deref, DerefMut};
 use std::mem;
@@ -78,6 +81,19 @@ impl<Act: Actor> ActorGuardMut<Act> {
     {
         create_subordinate(self.shared_state.as_ref(), state)
     }
+
+    /// Create a subordinate actor, with this one as its manager.
+    ///
+    /// Returns the subordinate mailbox, and the subordinate actor socket.
+    pub fn manage_socket<Sub>(&self) -> (
+        ActorSocket<Sub>,
+        MailboxOwned<Sub::Message>,
+    )
+    where
+        Sub: Actor<End = Act::SubordinateEnd>
+    {
+        create_subordinate_socket(self.shared_state.as_ref())
+    }
 }
 
 impl<Act: Actor> ActorGuardShared<Act> {
@@ -92,6 +108,19 @@ impl<Act: Actor> ActorGuardShared<Act> {
         Sub: Actor<End = Act::SubordinateEnd>
     {
         create_subordinate(self.shared_state.as_ref(), state)
+    }
+
+    /// Create a subordinate actor, with this one as its manager.
+    ///
+    /// Returns the subordinate mailbox, and the subordinate actor socket.
+    pub fn manage_socket<Sub>(&self) -> (
+        ActorSocket<Sub>,
+        MailboxOwned<Sub::Message>,
+    )
+        where
+            Sub: Actor<End = Act::SubordinateEnd>
+    {
+        create_subordinate_socket(self.shared_state.as_ref())
     }
 }
 

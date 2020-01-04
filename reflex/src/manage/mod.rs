@@ -6,11 +6,12 @@ use crate::{
         MailboxWeak,
     },
     internal::{
+        ActorState,
+        queue::MsgQueue,
         create::{
             create_actor,
             create_actor_using_mailbox,
         },
-        ActorState,
     },
 };
 
@@ -133,6 +134,43 @@ impl<Act: Actor> Future for SubordinateActor<Act> {
 
     fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
         self.actor.poll()
+    }
+}
+
+/// The receiving end of an already-created mailbox, ready for an actor
+/// to be plugged in as subordinate. This pattern allows a user to create
+/// circular chains of ActorMailboxWeak.
+#[must_use = "ActorSocket must be completed then polled"]
+pub struct ActorSocket<Act: Actor> {
+    msg_recv: MsgQueue<Act>,
+    end_signal_send: mpsc::UnboundedSender<Act::End>,
+    subord_end_signal_send: mpsc::UnboundedSender<Act::SubordinateEnd>,
+}
+
+impl<Act: Actor> ActorSocket<Act> {
+    /// Crate-internal constructor.
+    pub(crate) fn new(
+        msg_recv: MsgQueue<Act>,
+        end_signal_send: mpsc::UnboundedSender<Act::End>,
+        subord_end_signal_send: mpsc::UnboundedSender<Act::SubordinateEnd>,
+    ) -> Self {
+        ActorSocket {
+            msg_recv,
+            end_signal_send,
+            subord_end_signal_send,
+        }
+    }
+
+    /// Plug in the actor state to produce to actor future, which must
+    /// still be spawned.
+    pub fn complete(self, state: Act) -> SubordinateActor<Act> {
+        let actor = create_actor_using_mailbox(
+            state,
+            self.msg_recv,
+            self.end_signal_send,
+            self.subord_end_signal_send,
+        );
+        SubordinateActor::new(actor)
     }
 }
 
