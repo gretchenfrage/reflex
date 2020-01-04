@@ -1,5 +1,11 @@
 
+use super::MailboxOwned;
+use super::generic::Mailbox;
 use crate::util::drop_signal::DropSignalArc;
+use crate::msg_union::{MessageTypeUnion, MailboxEntry};
+
+
+use futures::sync::mpsc;
 
 /// Mechanism for mailbox actor-ownership semantics.
 pub trait Ownership: Clone + Send + Sync + 'static {}
@@ -30,3 +36,15 @@ impl Ownership for Supervisor {}
 pub struct Weak;
 
 impl Ownership for Weak {}
+
+
+
+impl<T: MessageTypeUnion> MailboxOwned<T> {
+    /// Crate-internal constructor.
+    pub (crate) fn new_owned(
+        msg_send: mpsc::Sender<MailboxEntry<T>>,
+        drop_signal: DropSignalArc,
+    ) -> Self {
+        Mailbox::new(msg_send, Supervisor::new(drop_signal))
+    }
+}

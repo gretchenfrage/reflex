@@ -1,6 +1,13 @@
 
 use crate::Actor;
+use crate::manage::SubordinateActor;
+use crate::mailbox::MailboxOwned;
 use super::{ActorGuardShared, ActorGuardMut, ReleaseMode};
+use super::create::{
+    create_actor,
+    create_actor_using_mailbox,
+};
+use super::supervise::create_subordinate;
 
 use std::ops::{Deref, DerefMut};
 use std::mem;
@@ -62,7 +69,36 @@ impl<Act: Actor> ActorGuardMut<Act> {
 
         user_state
     }
+
+    /// Create a subordinate actor, with this one as its manager.
+    ///
+    /// Returns the subordinate mailbox, and a future which must be spawned.
+    pub fn manage<Sub>(&self, state: Sub) -> (
+        SubordinateActor<Sub>,
+        MailboxOwned<Sub::Message>
+    )
+    where
+        Sub: Actor<End = Act::SubordinateEnd>
+    {
+        create_subordinate(self.shared_state.as_ref(), state)
+    }
 }
+
+impl<Act: Actor> ActorGuardShared<Act> {
+    /// Create a subordinate actor, with this one as its manager.
+    ///
+    /// Returns the subordinate mailbox, and a future which must be spawned.
+    pub fn manage<Sub>(&self, state: Sub) -> (
+        SubordinateActor<Sub>,
+        MailboxOwned<Sub::Message>
+    )
+    where
+        Sub: Actor<End = Act::SubordinateEnd>
+    {
+        create_subordinate(self.shared_state.as_ref(), state)
+    }
+}
+
 
 // == drop impls ==
 

@@ -23,6 +23,9 @@ pub mod actor_guard_impl;
 /// Internal creation of actors.
 pub mod create;
 
+/// Internal handling of actor manager/subordinate relations.
+pub mod supervise;
+
 /// Abstraction over message queues.
 pub mod queue;
 

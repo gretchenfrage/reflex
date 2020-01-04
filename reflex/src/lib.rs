@@ -30,6 +30,8 @@ pub mod manage;
 #[doc(inline)]
 pub use crate::internal::{ActorGuardShared, ActorGuardMut};
 
+pub use crate::manage::RootActor;
+
 /// Actor types.
 ///
 /// This trait is meant to be implemented with macros.

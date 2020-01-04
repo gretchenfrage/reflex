@@ -19,6 +19,7 @@ use crate::{
 use futures::{
     {Future, Stream, Poll, Async},
     sync::mpsc,
+    future::Fuse,
 };
 
 #[cfg(feature = "failure-interop")]
@@ -37,7 +38,7 @@ where
     Act: Actor,
     Act::End: IntoResult,
 {
-    actor: ActorState<Act>,
+    actor: Fuse<ActorState<Act>>,
     mailbox: MailboxOwned<Act::Message>,
     end_signal_recv: mpsc::UnboundedReceiver<Act::End>,
 }
@@ -61,11 +62,10 @@ where
             drop_signal_send,
         ) = create_actor(state, end_signal_send);
 
-        let mailbox_ownership = Supervisor::new(drop_signal_send.arc());
-        let mailbox = Mailbox::new(msg_sender, mailbox_ownership);
+        let mailbox = MailboxOwned::new_owned(msg_sender, drop_signal_send.arc());
 
         RootActor {
-            actor,
+            actor: actor.fuse(),
             mailbox,
             end_signal_recv,
         }
@@ -86,10 +86,10 @@ where
 }
 
 impl<Act> Future for RootActor<Act>
-    where
-        Act: Actor,
-        Act::End: IntoResult,
-        <Act::End as IntoResult>::Error: From<AbnormalClose>,
+where
+    Act: Actor,
+    Act::End: IntoResult,
+    <Act::End as IntoResult>::Error: From<AbnormalClose>,
 {
     type Item = <Act::End as IntoResult>::Item;
     type Error = <Act::End as IntoResult>::Error;
@@ -109,6 +109,32 @@ impl<Act> Future for RootActor<Act>
                 Err(Self::Error::from(AbnormalClose))
             ),
         }
+    }
+}
+
+/// A future that drives a subordinate actor.
+///
+/// This is returned from using an actor guard to spawn a subordinate.
+/// This must be spawned onto an executor, and that's the only thing
+/// you can do with this.
+pub struct SubordinateActor<Act: Actor> {
+    // this is just an opaque wrapper around crate::internal::ActorState
+    actor: ActorState<Act>,
+}
+
+impl<Act: Actor> SubordinateActor<Act> {
+    /// Crate-internal constructor.
+    pub (crate) fn new(actor: ActorState<Act>) -> Self {
+        SubordinateActor { actor }
+    }
+}
+
+impl<Act: Actor> Future for SubordinateActor<Act> {
+    type Item = ();
+    type Error = ();
+
+    fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
+        self.actor.poll()
     }
 }
 
