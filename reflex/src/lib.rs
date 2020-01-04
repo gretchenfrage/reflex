@@ -6,6 +6,7 @@ extern crate log;
 extern crate futures;
 extern crate atomic;
 extern crate smallvec;
+#[cfg(feature = "failure-interop")]
 extern crate failure;
 
 use crate::msg_union::{Message, MessageTypeUnion};
@@ -21,6 +22,9 @@ pub mod msg_union;
 
 /// Handles for sending messages to actors.
 pub mod mailbox;
+
+/// Actor management API.
+pub mod manage;
 
 // re-export actor guards to the crate root
 #[doc(inline)]

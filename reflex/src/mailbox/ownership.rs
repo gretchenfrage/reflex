@@ -13,6 +13,13 @@ pub struct Supervisor {
     drop_signal: DropSignalArc
 }
 
+impl Supervisor {
+    /// Crate-internal constructor.
+    pub (crate) fn new(drop_signal: DropSignalArc) -> Self {
+        Supervisor { drop_signal }
+    }
+}
+
 impl Ownership for Supervisor {}
 
 /// Weak ownership semantics.

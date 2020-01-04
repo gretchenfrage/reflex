@@ -6,13 +6,19 @@ edition = "2018"
 description = "Actors, simple and fast."
 readme = "README.md"
 
+[features]
+default = ["failure-interop"]
+
+failure-interop = ["failure"]
+
 [dependencies]
 # TODO: change dependencies to be good before release
 log = "0.4.8"
 futures = "0.1.28"
-failure = "0.1.5"
 atomic = "0.4.5"
 smallvec = "0.6.10"
+
+failure = { version = "0.1.5", optional = true }
 
 [dev-dependencies]
 tokio = "0.1.22"
