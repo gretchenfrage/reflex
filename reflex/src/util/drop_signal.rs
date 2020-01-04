@@ -12,6 +12,8 @@ use futures::{
 };
 
 /// Paired with a `DropSignalRecv`, sends the signal when this is dropped.
+///
+/// A user can also send the signal early, without dropping.
 pub struct DropSignalSend {
     send: Option<oneshot::Sender<()>>
 }
@@ -26,8 +28,15 @@ pub struct DropSignalRecv {
 
 impl Drop for DropSignalSend {
     fn drop(&mut self) {
-        let send = self.send.take().unwrap();
-        let _ = send.send(());
+        self.send();
+    }
+}
+
+impl DropSignalSend {
+    pub fn send(&mut self) {
+        if let Some(send) = self.send.take() {
+            let _ = send.send(());
+        }
     }
 }
 
