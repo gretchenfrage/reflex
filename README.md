@@ -1,7 +1,7 @@
 
 ## reflex
 
-**This project is in pre-release status, and is not currently operation.**
+**This project is in pre-release status, and is not currently operational.**
 
 > what?
 
