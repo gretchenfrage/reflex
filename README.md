@@ -68,7 +68,7 @@ clients subscribe to it.
     +===+ +===+ +===+   /
 ```
 
-##### Vulnerable Approach
+**Backpressure: Vulnerable Approach**
 
 The server actor sends data packets as messages to the client actors. These actors
 forward the packets to a TCP sink.
@@ -84,7 +84,7 @@ a new message.
 In summary, a single client's unresponsiveness has made the server unresponsive
 for all clients.
 
-> how to fix it?
+**Backpressure: Fixed Approach**
 
 An untrusted agent should not be responsible for relieving a backpressure pathway 
 that propagates to any services that is not exclusively for that client, such
